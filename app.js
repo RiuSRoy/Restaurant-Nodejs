@@ -7,6 +7,8 @@ var bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 mongoose.Promise = require('bluebird');
 const Dishes = require('./models/dishes');
+const Promtions = require('./models/promotions');
+const leaders = require('./models/leaders');
 
 var index = require('./routes/index');
 var users = require('./routes/users');
@@ -37,7 +39,37 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser());
+app.use(cookieParser('12345-67890-81340-36098'));
+
+function auth(req,res,next){
+  console.log(req.signedCookies);
+
+  if(!req.signedCookies.user) {
+    var authHeader = req.headers.authorization;
+
+    if(!authHeader) {
+      var err =new Error('You are not authenticated!');
+      res.setHeader('WWW-Authenticate' ,'Basic');
+      err.status = 401;
+      return next(err);
+    }
+    var auth = new Buffer(authHeader.split(' ')[1], 'base64').toString().split(':');
+    var u_name = auth[0];
+    var passwd = auth[1];
+    if(u_name == "riu" && passwd == 'password') {
+      res.cookie('user' , 'riu' , {signed:true});
+      next();
+    }
+    else {
+      var err =new Error('You are not authenticated!');
+      res.setHeader('WWW-Authenticate' ,'Basic');
+      err.status = 401;
+      return next(err);
+    }
+  }  
+}
+
+app.use(auth);
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', index);
